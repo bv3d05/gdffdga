@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: transparent;
+            color: white;
+            overflow: hidden;
+        }
+
+        .dropdown-wrapper {
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            z-index: 9999;
+        }
+
+        .dropdown-container {
+            width: 220px;
+            background: linear-gradient(145deg, #2c3e50, #34495e);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+            border: 1px solid #555;
+            overflow: hidden;
+        }
+
+        .dropdown-header {
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            padding: 12px 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-header:hover {
+            background: linear-gradient(145deg, #2980b9, #3498db);
+        }
+
+        .dropdown-arrow {
+            font-size: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        .dropdown-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: #34495e;
+        }
+
+        .dropdown-content.open {
+            max-height: 200px;
+        }
+
+        .dropdown-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #2c3e50;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item:hover {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            padding-left: 20px;
+        }
+
+        .dropdown-item.selected {
+            background: linear-gradient(145deg, #27ae60, #229954);
+        }
+
+        .item-icon {
+            font-size: 16px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(145deg, #27ae60, #229954);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0;
+            transform: translateX(300px);
+            transition: all 0.3s ease;
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .keyboard-hints {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #bdc3c7;
+            border: 1px solid #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="dropdown-wrapper">
+        <div class="dropdown-container">
+            <div class="dropdown-header" onclick="toggleDropdown()" id="header">
+                <span>Select Option</span>
+                <span class="dropdown-arrow" id="arrow">▼</span>
+            </div>
+            <div class="dropdown-content" id="content">
+                <div class="dropdown-item" onclick="selectOption(1, 'Option 1')">
+                    <span class="item-icon">🎯</span>
+                    <span>Option 1</span>
+                </div>
+                <div class="dropdown-item" onclick="selectOption(2, 'Option 2')">
+                    <span class="item-icon">⚡</span>
+                    <span>Option 2</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+    
+    <div class="keyboard-hints">
+        <div>F1: Toggle Menu</div>
+        <div>1/2: Quick Select</div>
+        <div>ESC: Close</div>
+    </div>
+
+    <script>
+        let isOpen = false;
+        let selectedIndex = 0;
+
+        function toggleDropdown() {
+            const content = document.getElementById('content');
+            const arrow = document.getElementById('arrow');
+            
+            isOpen = !isOpen;
+            
+            if (isOpen) {
+                content.classList.add('open');
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.remove('open');
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function selectOption(index, optionText) {
+            const header = document.getElementById('header').querySelector('span');
+            const items = document.querySelectorAll('.dropdown-item');
+            
+            // Update header
+            header.textContent = optionText;
+            
+            // Remove previous selection
+            items.forEach(item => item.classList.remove('selected'));
+            
+            // Add selection to current item
+            items[index - 1].classList.add('selected');
+            
+            // Close dropdown
+            toggleDropdown();
+            
+            // Show notification
+            showNotification(`${optionText} Selected - Working!`);
+            
+            // Console output
+            console.log(`${optionText} - working`);
+            
+            selectedIndex = index;
+        }
+
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', function(event) {
+            switch(event.key) {
+                case 'F1':
+                    event.preventDefault();
+                    toggleDropdown();
+                    break;
+                case '1':
+                    selectOption(1, 'Option 1');
+                    break;
+                case '2':
+                    selectOption(2, 'Option 2');
+                    break;
+                case 'Escape':
+                    if (isOpen) {
+                        toggleDropdown();
+                    }
+                    break;
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const container = document.querySelector('.dropdown-container');
+            if (!container.contains(event.target)) {
+                if (isOpen) {
+                    toggleDropdown();
+                }
+            }
+        });
+
+        // Initialize
+        showNotification('Dropdown Menu Ready!');
+    </script>
+</body>
+</html>
