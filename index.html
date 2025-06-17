@@ -1,312 +1,535 @@
--- ===== Fixed Aura HTML DUI Menu System =====
-
--- متغيرات النظام
-local AuraDUI = {
-    dui = nil,
-    duiHandle = nil,
-    txd = nil,
-    texture = nil,
-    isVisible = false,
-    authenticated = false,
-    currentCategory = nil
-}
-
--- إعدادات المنيو المُصححة
-local MENU_CONFIG = {
-    -- استخدم GitHub Pages بدلاً من raw
-    url = "https://wf-675.github.io/Aura-Api-Menu/index.html",
-    -- أو استخدم HTMLPreview كبديل
-    -- url = "https://htmlpreview.github.io/?https://github.com/wf-675/Aura-Api-Menu/blob/main/index.html",
-    width = 800,  -- زيادة العرض
-    height = 600, -- زيادة الارتفاع
-    posX = 0.5,   -- وسط الشاشة
-    posY = 0.5,   -- وسط الشاشة
-    scaleX = 0.45, -- تكبير العرض
-    scaleY = 0.55  -- تكبير الارتفاع
-}
-
--- ===== وظائف النظام المُحسنة =====
-
--- إنشاء DUI مع معالجة أخطاء
-function CreateAuraDUI()
-    print("Creating Aura DUI...")
-    print("Loading from URL: " .. MENU_CONFIG.url)
-    
-    -- تدمير DUI السابق إن وجد
-    if AuraDUI.dui then
-        DestroyAuraDUI()
-        Wait(100)
-    end
-    
-    -- إنشاء DUI من رابط HTML
-    AuraDUI.dui = CreateDui(MENU_CONFIG.url, MENU_CONFIG.width, MENU_CONFIG.height)
-    
-    if not AuraDUI.dui then
-        print("❌ Failed to create DUI - Check URL")
-        return false
-    end
-    
-    -- انتظار تحميل DUI
-    Wait(1000)
-    
-    -- الحصول على handle
-    AuraDUI.duiHandle = GetDuiHandle(AuraDUI.dui)
-    
-    if not AuraDUI.duiHandle then
-        print("❌ Failed to get DUI handle")
-        DestroyDui(AuraDUI.dui)
-        AuraDUI.dui = nil
-        return false
-    end
-    
-    -- إنشاء texture dictionary
-    AuraDUI.txd = CreateRuntimeTxd("aura_menu_txd")
-    
-    if not AuraDUI.txd then
-        print("❌ Failed to create texture dictionary")
-        return false
-    end
-    
-    -- إنشاء texture من DUI
-    AuraDUI.texture = CreateRuntimeTextureFromDuiHandle(AuraDUI.txd, "aura_menu_tex", AuraDUI.duiHandle)
-    
-    if not AuraDUI.texture then
-        print("❌ Failed to create texture from DUI")
-        return false
-    end
-    
-    print("✅ Aura DUI created successfully")
-    AuraDUI.isVisible = true
-    
-    -- إرسال رسالة اختبار للـ HTML
-    Wait(2000)
-    SendMessageToDUI({
-        type = "system_ready",
-        message = "DUI System Ready"
-    })
-    
-    return true
-end
-
--- تدمير DUI
-function DestroyAuraDUI()
-    if AuraDUI.dui then
-        DestroyDui(AuraDUI.dui)
-        AuraDUI.dui = nil
-        AuraDUI.duiHandle = nil
-        AuraDUI.texture = nil
-        AuraDUI.txd = nil
-        AuraDUI.isVisible = false
-        print("Aura DUI destroyed")
-    end
-end
-
--- إرسال رسالة للـ HTML
-function SendMessageToDUI(message)
-    if AuraDUI.dui then
-        local success = SendDuiMessage(AuraDUI.dui, json.encode(message))
-        if success then
-            print("📤 Message sent to DUI: " .. message.type)
-        else
-            print("❌ Failed to send message to DUI")
-        end
-    else
-        print("❌ Cannot send message - DUI not available")
-    end
-end
-
--- معالج رسائل من HTML
-function HandleDUIMessage(data)
-    print("📥 Received DUI message: " .. (data.type or "unknown"))
-    
-    if data.type == "aura_authenticated" then
-        AuraDUI.authenticated = true
-        print("✅ Authentication successful for key: " .. (data.key or "unknown"))
-        TriggerEvent('chatMessage', 'Aura', {0, 255, 0}, 'Authentication successful!')
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
         
-    elseif data.type == "aura_category_selected" then
-        AuraDUI.currentCategory = data.category
-        print("📂 Category selected: " .. data.category)
-        HandleCategorySelection(data.category)
-        
-    elseif data.type == "aura_option_selected" then
-        print("⚡ Option selected: " .. (data.option or "unknown"))
-        print("working")
-        TriggerEvent('chatMessage', 'Aura', {255, 255, 0}, (data.option or "Option") .. " - working!")
-        
-    elseif data.type == "aura_error" then
-        print("❌ HTML Error: " .. (data.message or "unknown error"))
-        
-    elseif data.type == "aura_ready" then
-        print("✅ HTML interface ready")
-        TriggerEvent('chatMessage', 'Aura', {0, 255, 255}, 'Menu interface loaded!')
-    end
-end
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Orbitron', monospace;
+            background: transparent;
+            color: white;
+            overflow: hidden;
+        }
 
--- معالج اختيار الفئات
-function HandleCategorySelection(category)
-    if not AuraDUI.authenticated then
-        print("❌ User not authenticated")
-        TriggerEvent('chatMessage', 'Aura', {255, 0, 0}, 'Authentication required!')
-        return
-    end
+        .menu-container {
+            position: fixed;
+            top: 50%;
+            right: 15%;
+            transform: translateY(-50%);
+            width: 350px;
+            filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.3));
+        }
+
+        .menu-header {
+            background: linear-gradient(145deg, #0a0a0a, #1a1a1a);
+            border: 2px solid;
+            border-image: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00, #00ffff) 1;
+            padding: 15px 25px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 900;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+            animation: headerGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes headerGlow {
+            0% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); }
+            100% { box-shadow: 0 0 30px rgba(255, 0, 255, 0.7); }
+        }
+
+        .menu-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            animation: shine 2s infinite;
+        }
+
+        @keyframes shine {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .menu-items {
+            background: linear-gradient(145deg, #0f0f0f, #1f1f1f);
+            border: 2px solid;
+            border-image: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00, #00ffff) 1;
+            border-top: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .menu-item {
+            padding: 15px 25px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .menu-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .menu-item:hover::before {
+            left: 100%;
+        }
+
+        .menu-item:hover {
+            background: linear-gradient(145deg, rgba(0, 255, 255, 0.1), rgba(255, 0, 255, 0.1));
+            color: #00ffff;
+            text-shadow: 0 0 10px currentColor;
+            transform: translateX(10px);
+            box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+
+        .menu-item.selected {
+            background: linear-gradient(145deg, rgba(255, 0, 100, 0.3), rgba(0, 255, 255, 0.3));
+            color: #ffffff;
+            text-shadow: 0 0 15px #ff0064;
+            border-left: 4px solid #ff0064;
+            animation: pulse 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: inset 0 0 20px rgba(255, 0, 100, 0.3); }
+            100% { box-shadow: inset 0 0 40px rgba(255, 0, 100, 0.6); }
+        }
+
+        .menu-item-text {
+            flex: 1;
+            position: relative;
+            z-index: 2;
+        }
+
+        .menu-item-arrow {
+            font-size: 14px;
+            margin-left: 15px;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        .menu-item:hover .menu-item-arrow {
+            transform: translateX(5px) scale(1.2);
+            color: #ffff00;
+        }
+
+        .submenu {
+            background: linear-gradient(145deg, #0a0a0a, #1a1a1a);
+            border: 2px solid;
+            border-image: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00, #ff00ff) 1;
+            border-top: 1px solid rgba(255, 0, 255, 0.5);
+            margin-left: 30px;
+            margin-top: 5px;
+            display: none;
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .submenu.open {
+            display: block;
+            opacity: 1;
+            transform: translateX(0);
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            0% {
+                opacity: 0;
+                transform: translateX(-30px) scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+
+        .submenu-item {
+            padding: 12px 25px;
+            border-bottom: 1px solid rgba(255, 0, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 400;
+            color: #cccccc;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .submenu-item:last-child {
+            border-bottom: none;
+        }
+
+        .submenu-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(255, 0, 255, 0.3), rgba(0, 255, 255, 0.3));
+            transition: width 0.4s ease;
+        }
+
+        .submenu-item:hover::before {
+            width: 100%;
+        }
+
+        .submenu-item:hover {
+            color: #ffffff;
+            text-shadow: 0 0 10px #ff00ff;
+            transform: translateX(10px);
+        }
+
+        .submenu-item.selected {
+            background: linear-gradient(145deg, rgba(255, 215, 0, 0.3), rgba(255, 69, 0, 0.3));
+            color: #ffffff;
+            text-shadow: 0 0 15px #ffd700;
+            border-left: 3px solid #ffd700;
+        }
+
+        .controls-info {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(145deg, #0a0a0a, #1a1a1a);
+            border: 2px solid;
+            border-image: linear-gradient(45deg, #00ffff, #ff00ff) 1;
+            padding: 15px 20px;
+            font-size: 12px;
+            font-family: 'Orbitron', monospace;
+            color: #cccccc;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .status-bar {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: linear-gradient(145deg, #0a0a0a, #1a1a1a);
+            border: 2px solid #00ff00;
+            padding: 10px 15px;
+            font-size: 13px;
+            font-family: 'Orbitron', monospace;
+            color: #00ff00;
+            border-radius: 8px;
+            text-shadow: 0 0 10px #00ff00;
+            animation: statusBlink 2s ease-in-out infinite;
+        }
+
+        @keyframes statusBlink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.7; }
+        }
+
+        .notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(145deg, #0a0a0a, #1a1a1a);
+            border: 3px solid;
+            border-image: linear-gradient(45deg, #00ff00, #ffff00, #ff0000, #00ff00) 1;
+            padding: 25px 35px;
+            font-size: 16px;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            color: #00ff00;
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            text-shadow: 0 0 15px currentColor;
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.05);
+            animation: notificationPulse 0.5s ease-out;
+        }
+
+        @keyframes notificationPulse {
+            0% { transform: translate(-50%, -50%) scale(0.8); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+
+        .menu-title {
+            background: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: titleGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes titleGlow {
+            0% { filter: drop-shadow(0 0 5px #00ffff); }
+            100% { filter: drop-shadow(0 0 15px #ff00ff); }
+        }
+
+        .breadcrumb {
+            background: linear-gradient(145deg, #0a0a0a, #1a1a1a);
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            padding: 8px 15px;
+            font-size: 12px;
+            color: #00ffff;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            text-shadow: 0 0 5px currentColor;
+            backdrop-filter: blur(5px);
+        }
+
+        .particle {
+            position: fixed;
+            width: 2px;
+            height: 2px;
+            background: #00ffff;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particle 3s linear infinite;
+        }
+
+        @keyframes particle {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-10px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Holographic effect */
+        .menu-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00, #00ffff);
+            z-index: -1;
+            border-radius: 10px;
+            opacity: 0.3;
+            animation: hologram 4s linear infinite;
+        }
+
+        @keyframes hologram {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="breadcrumb">◤ SYSTEM › MAIN INTERFACE ◢</div>
     
-    TriggerEvent('chatMessage', 'Aura', {100, 200, 255}, 'Category: ' .. category)
+    <div class="menu-container">
+        <div class="menu-header">
+            <span class="menu-title">◈ QUANTUM MENU ◈</span>
+        </div>
+        
+        <div class="menu-items">
+            <div class="menu-item" onclick="toggleSubmenu('option1')" id="item1">
+                <span class="menu-item-text">⚡ OPTION 1</span>
+                <span class="menu-item-arrow">▶</span>
+            </div>
+            <div class="submenu" id="submenu1">
+                <div class="submenu-item" onclick="selectOption('Option 1 - Action Alpha')">◦ Action Alpha</div>
+                <div class="submenu-item" onclick="selectOption('Option 1 - Action Beta')">◦ Action Beta</div>
+            </div>
+            
+            <div class="menu-item" onclick="toggleSubmenu('option2')" id="item2">
+                <span class="menu-item-text">🔥 OPTION 2</span>
+                <span class="menu-item-arrow">▶</span>
+            </div>
+            <div class="submenu" id="submenu2">
+                <div class="submenu-item" onclick="selectOption('Option 2 - Action Gamma')">◦ Action Gamma</div>
+                <div class="submenu-item" onclick="selectOption('Option 2 - Action Delta')">◦ Action Delta</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-bar" id="status">◈ STATUS: ONLINE ◈</div>
     
-    -- تنفيذ الوظائف حسب الفئة المختارة
-    if category == "self" then
-        print("👤 Opening player options...")
-        
-    elseif category == "online" then
-        print("🌐 Opening online players menu...")
-        
-    elseif category == "weapons" then
-        print("🔫 Opening weapons menu...")
-        
-    elseif category == "visual" then
-        print("👁️ Opening visual effects...")
-        
-    elseif category == "vehicle" then
-        print("🚗 Opening vehicle options...")
-        
-    elseif category == "world" then
-        print("🌍 Opening world options...")
-        
-    elseif category == "misc" then
-        print("📦 Opening miscellaneous...")
-        
-    elseif category == "settings" then
-        print("⚙️ Opening settings...")
-    end
-end
-
--- ===== أوامر التحكم =====
-
--- تبديل المنيو
-function ToggleAuraMenu()
-    if AuraDUI.isVisible then
-        AuraDUI.isVisible = false
-        print("Menu hidden")
-        TriggerEvent('chatMessage', 'Aura', {255, 165, 0}, 'Menu hidden')
-    else
-        if not AuraDUI.dui then
-            CreateAuraDUI()
-        end
-        AuraDUI.isVisible = true
-        print("Menu shown")
-        TriggerEvent('chatMessage', 'Aura', {0, 255, 0}, 'Menu shown')
-    end
-end
-
--- إعادة تحميل المنيو
-function ReloadAuraMenu()
-    print("🔄 Reloading Aura Menu...")
-    DestroyAuraDUI()
-    Wait(500)
-    CreateAuraDUI()
-    TriggerEvent('chatMessage', 'Aura', {255, 255, 0}, 'Menu reloaded!')
-end
-
--- ===== Thread الرسم =====
-
-CreateThread(function()
-    -- إنشاء DUI عند البدء
-    Wait(2000) -- انتظار تحميل النظام
-    CreateAuraDUI()
+    <div class="controls-info">
+        ▲ ENTER: Execute<br>
+        ▼ ESC: Return<br>
+        ◆ 1-2: Quick Access
+    </div>
     
-    while true do
-        Wait(0)
-        
-        -- رسم DUI على الشاشة
-        if AuraDUI.isVisible and AuraDUI.txd and AuraDUI.texture then
-            DrawSprite("aura_menu_txd", "aura_menu_tex", 
-                      MENU_CONFIG.posX, MENU_CONFIG.posY, 
-                      MENU_CONFIG.scaleX, MENU_CONFIG.scaleY, 
-                      0.0, 255, 255, 255, 255)
-        end
-    end
-end)
+    <div class="notification" id="notification"></div>
 
--- ===== Thread التحكم =====
+    <script>
+        let currentSubmenu = null;
 
-CreateThread(function()
-    while true do
-        Wait(0)
-        
-        -- تبديل المنيو بـ F1
-        if IsControlJustPressed(0, 288) then -- F1
-            ToggleAuraMenu()
-        end
-        
-        -- إعادة تحميل بـ F2
-        if IsControlJustPressed(0, 289) then -- F2
-            ReloadAuraMenu()
-        end
-        
-        -- إخفاء بـ ESC
-        if IsControlJustPressed(0, 322) and AuraDUI.isVisible then -- ESC
-            AuraDUI.isVisible = false
-            TriggerEvent('chatMessage', 'Aura', {255, 165, 0}, 'Menu hidden')
-        end
-    end
-end)
+        // Create floating particles
+        function createParticle() {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + 'vw';
+            particle.style.animationDelay = Math.random() * 3 + 's';
+            particle.style.background = ['#00ffff', '#ff00ff', '#ffff00'][Math.floor(Math.random() * 3)];
+            document.body.appendChild(particle);
+            
+            setTimeout(() => {
+                particle.remove();
+            }, 3000);
+        }
 
--- ===== معالج الأحداث =====
+        // Create particles periodically
+        setInterval(createParticle, 500);
 
--- استقبال رسائل من HTML
-RegisterNUICallback('messageHandler', function(data, cb)
-    HandleDUIMessage(data)
-    cb('ok')
-end)
+        function toggleSubmenu(optionId) {
+            const submenu = document.getElementById('submenu' + optionId.slice(-1));
+            const menuItem = document.getElementById('item' + optionId.slice(-1));
+            
+            // Close other submenus
+            document.querySelectorAll('.submenu').forEach(sub => {
+                if (sub !== submenu) {
+                    sub.classList.remove('open');
+                }
+            });
+            
+            // Remove selection from other items
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // Toggle current submenu
+            if (submenu.classList.contains('open')) {
+                submenu.classList.remove('open');
+                menuItem.classList.remove('selected');
+                currentSubmenu = null;
+                updateBreadcrumb('◤ SYSTEM › MAIN INTERFACE ◢');
+            } else {
+                submenu.classList.add('open');
+                menuItem.classList.add('selected');
+                currentSubmenu = optionId;
+                updateBreadcrumb(`◤ SYSTEM › ${menuItem.querySelector('.menu-item-text').textContent} ◢`);
+            }
+        }
 
--- أوامر الشات
-RegisterCommand('aura', function()
-    ToggleAuraMenu()
-end, false)
+        function selectOption(optionText) {
+            // Remove previous selections
+            document.querySelectorAll('.submenu-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // Add selection to current item
+            event.target.classList.add('selected');
+            
+            // Show notification
+            showNotification(`◈ EXECUTED: ${optionText} ◈`);
+            updateStatus(`◈ PROCESSING: ${optionText.toUpperCase()} ◈`);
+            
+            // Console output
+            console.log(`${optionText} - working`);
+            
+            // Send to FiveM if available
+            if (typeof fetch !== 'undefined') {
+                fetch('https://quantum-menu/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ option: optionText })
+                }).catch(() => {});
+            }
+            
+            // Reset status after 3 seconds
+            setTimeout(() => {
+                updateStatus('◈ STATUS: ONLINE ◈');
+            }, 3000);
+        }
 
-RegisterCommand('aurareload', function()
-    ReloadAuraMenu()
-end, false)
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.innerHTML = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
 
-RegisterCommand('auraurl', function(source, args)
-    if args[1] then
-        MENU_CONFIG.url = args[1]
-        print("URL updated to: " .. args[1])
-        ReloadAuraMenu()
-    else
-        print("Current URL: " .. MENU_CONFIG.url)
-        TriggerEvent('chatMessage', 'Aura', {255, 255, 0}, 'URL: ' .. MENU_CONFIG.url)
-    end
-end, false)
+        function updateStatus(status) {
+            document.getElementById('status').innerHTML = status;
+        }
 
--- تنظيف عند إنهاء الـ resource
-AddEventHandler('onResourceStop', function(resourceName)
-    if (GetCurrentResourceName() ~= resourceName) then
-        return
-    end
-    
-    DestroyAuraDUI()
-end)
+        function updateBreadcrumb(path) {
+            document.querySelector('.breadcrumb').innerHTML = path;
+        }
 
--- رسائل البدء
-print("==============================")
-print("FIXED AURA HTML DUI MENU")
-print("URL: " .. MENU_CONFIG.url)
-print("Controls:")
-print("F1: Toggle Menu")
-print("F2: Reload Menu") 
-print("ESC: Hide Menu")
-print("Commands: /aura /aurareload /auraurl")
-print("==============================")
+        // Keyboard controls
+        document.addEventListener('keydown', function(event) {
+            switch(event.key) {
+                case 'Enter':
+                    if (currentSubmenu) {
+                        const firstSubmenuItem = document.querySelector(`#submenu${currentSubmenu.slice(-1)} .submenu-item`);
+                        if (firstSubmenuItem) {
+                            firstSubmenuItem.click();
+                        }
+                    } else {
+                        toggleSubmenu('option1');
+                    }
+                    break;
+                case 'Escape':
+                    if (currentSubmenu) {
+                        toggleSubmenu(currentSubmenu);
+                    }
+                    break;
+                case '1':
+                    selectOption('◈ QUANTUM OPTION 1 - ACTIVATED ◈');
+                    break;
+                case '2':
+                    selectOption('◈ QUANTUM OPTION 2 - ACTIVATED ◈');
+                    break;
+            }
+        });
 
--- فحص حالة DUI
-CreateThread(function()
-    Wait(5000)
-    if AuraDUI.isVisible and AuraDUI.dui then
-        print("✅ Aura DUI is running successfully")
-        TriggerEvent('chatMessage', 'Aura', {0, 255, 0}, 'DUI System Ready!')
-    else
-        print("❌ Aura DUI failed to load - Try /aurareload")
-        TriggerEvent('chatMessage', 'Aura', {255, 0, 0}, 'DUI Load Failed - Try F2 or /aurareload')
-    end
-end)
+        // Initialize with epic entrance
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                showNotification('◈ QUANTUM INTERFACE INITIALIZED ◈');
+            }, 500);
+        });
+
+        console.log('◈ QUANTUM MENU SYSTEM ACTIVATED ◈');
+    </script>
+</body>
+</html>
