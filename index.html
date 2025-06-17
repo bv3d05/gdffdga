@@ -1,242 +1,312 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: transparent;
-            color: white;
-            overflow: hidden;
-        }
+-- ===== Fixed Aura HTML DUI Menu System =====
 
-        .dropdown-wrapper {
-            position: absolute;
-            top: 50px;
-            left: 50px;
-            z-index: 9999;
-        }
+-- متغيرات النظام
+local AuraDUI = {
+    dui = nil,
+    duiHandle = nil,
+    txd = nil,
+    texture = nil,
+    isVisible = false,
+    authenticated = false,
+    currentCategory = nil
+}
 
-        .dropdown-container {
-            width: 220px;
-            background: linear-gradient(145deg, #2c3e50, #34495e);
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-            border: 1px solid #555;
-            overflow: hidden;
-        }
+-- إعدادات المنيو المُصححة
+local MENU_CONFIG = {
+    -- استخدم GitHub Pages بدلاً من raw
+    url = "https://wf-675.github.io/Aura-Api-Menu/index.html",
+    -- أو استخدم HTMLPreview كبديل
+    -- url = "https://htmlpreview.github.io/?https://github.com/wf-675/Aura-Api-Menu/blob/main/index.html",
+    width = 800,  -- زيادة العرض
+    height = 600, -- زيادة الارتفاع
+    posX = 0.5,   -- وسط الشاشة
+    posY = 0.5,   -- وسط الشاشة
+    scaleX = 0.45, -- تكبير العرض
+    scaleY = 0.55  -- تكبير الارتفاع
+}
 
-        .dropdown-header {
-            background: linear-gradient(145deg, #3498db, #2980b9);
-            padding: 12px 16px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
+-- ===== وظائف النظام المُحسنة =====
 
-        .dropdown-header:hover {
-            background: linear-gradient(145deg, #2980b9, #3498db);
-        }
-
-        .dropdown-arrow {
-            font-size: 12px;
-            transition: transform 0.3s ease;
-        }
-
-        .dropdown-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-            background: #34495e;
-        }
-
-        .dropdown-content.open {
-            max-height: 200px;
-        }
-
-        .dropdown-item {
-            padding: 12px 16px;
-            cursor: pointer;
-            border-bottom: 1px solid #2c3e50;
-            transition: all 0.2s ease;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .dropdown-item:last-child {
-            border-bottom: none;
-        }
-
-        .dropdown-item:hover {
-            background: linear-gradient(145deg, #e74c3c, #c0392b);
-            padding-left: 20px;
-        }
-
-        .dropdown-item.selected {
-            background: linear-gradient(145deg, #27ae60, #229954);
-        }
-
-        .item-icon {
-            font-size: 16px;
-        }
-
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(145deg, #27ae60, #229954);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 6px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            font-size: 14px;
-            font-weight: 600;
-            opacity: 0;
-            transform: translateX(300px);
-            transition: all 0.3s ease;
-        }
-
-        .notification.show {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        .keyboard-hints {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 10px 15px;
-            border-radius: 6px;
-            font-size: 12px;
-            color: #bdc3c7;
-            border: 1px solid #444;
-        }
-    </style>
-</head>
-<body>
-    <div class="dropdown-wrapper">
-        <div class="dropdown-container">
-            <div class="dropdown-header" onclick="toggleDropdown()" id="header">
-                <span>Select Option</span>
-                <span class="dropdown-arrow" id="arrow">▼</span>
-            </div>
-            <div class="dropdown-content" id="content">
-                <div class="dropdown-item" onclick="selectOption(1, 'Option 1')">
-                    <span class="item-icon">🎯</span>
-                    <span>Option 1</span>
-                </div>
-                <div class="dropdown-item" onclick="selectOption(2, 'Option 2')">
-                    <span class="item-icon">⚡</span>
-                    <span>Option 2</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="notification" id="notification"></div>
+-- إنشاء DUI مع معالجة أخطاء
+function CreateAuraDUI()
+    print("Creating Aura DUI...")
+    print("Loading from URL: " .. MENU_CONFIG.url)
     
-    <div class="keyboard-hints">
-        <div>F1: Toggle Menu</div>
-        <div>1/2: Quick Select</div>
-        <div>ESC: Close</div>
-    </div>
+    -- تدمير DUI السابق إن وجد
+    if AuraDUI.dui then
+        DestroyAuraDUI()
+        Wait(100)
+    end
+    
+    -- إنشاء DUI من رابط HTML
+    AuraDUI.dui = CreateDui(MENU_CONFIG.url, MENU_CONFIG.width, MENU_CONFIG.height)
+    
+    if not AuraDUI.dui then
+        print("❌ Failed to create DUI - Check URL")
+        return false
+    end
+    
+    -- انتظار تحميل DUI
+    Wait(1000)
+    
+    -- الحصول على handle
+    AuraDUI.duiHandle = GetDuiHandle(AuraDUI.dui)
+    
+    if not AuraDUI.duiHandle then
+        print("❌ Failed to get DUI handle")
+        DestroyDui(AuraDUI.dui)
+        AuraDUI.dui = nil
+        return false
+    end
+    
+    -- إنشاء texture dictionary
+    AuraDUI.txd = CreateRuntimeTxd("aura_menu_txd")
+    
+    if not AuraDUI.txd then
+        print("❌ Failed to create texture dictionary")
+        return false
+    end
+    
+    -- إنشاء texture من DUI
+    AuraDUI.texture = CreateRuntimeTextureFromDuiHandle(AuraDUI.txd, "aura_menu_tex", AuraDUI.duiHandle)
+    
+    if not AuraDUI.texture then
+        print("❌ Failed to create texture from DUI")
+        return false
+    end
+    
+    print("✅ Aura DUI created successfully")
+    AuraDUI.isVisible = true
+    
+    -- إرسال رسالة اختبار للـ HTML
+    Wait(2000)
+    SendMessageToDUI({
+        type = "system_ready",
+        message = "DUI System Ready"
+    })
+    
+    return true
+end
 
-    <script>
-        let isOpen = false;
-        let selectedIndex = 0;
+-- تدمير DUI
+function DestroyAuraDUI()
+    if AuraDUI.dui then
+        DestroyDui(AuraDUI.dui)
+        AuraDUI.dui = nil
+        AuraDUI.duiHandle = nil
+        AuraDUI.texture = nil
+        AuraDUI.txd = nil
+        AuraDUI.isVisible = false
+        print("Aura DUI destroyed")
+    end
+end
 
-        function toggleDropdown() {
-            const content = document.getElementById('content');
-            const arrow = document.getElementById('arrow');
-            
-            isOpen = !isOpen;
-            
-            if (isOpen) {
-                content.classList.add('open');
-                arrow.style.transform = 'rotate(180deg)';
-            } else {
-                content.classList.remove('open');
-                arrow.style.transform = 'rotate(0deg)';
-            }
-        }
+-- إرسال رسالة للـ HTML
+function SendMessageToDUI(message)
+    if AuraDUI.dui then
+        local success = SendDuiMessage(AuraDUI.dui, json.encode(message))
+        if success then
+            print("📤 Message sent to DUI: " .. message.type)
+        else
+            print("❌ Failed to send message to DUI")
+        end
+    else
+        print("❌ Cannot send message - DUI not available")
+    end
+end
 
-        function selectOption(index, optionText) {
-            const header = document.getElementById('header').querySelector('span');
-            const items = document.querySelectorAll('.dropdown-item');
-            
-            // Update header
-            header.textContent = optionText;
-            
-            // Remove previous selection
-            items.forEach(item => item.classList.remove('selected'));
-            
-            // Add selection to current item
-            items[index - 1].classList.add('selected');
-            
-            // Close dropdown
-            toggleDropdown();
-            
-            // Show notification
-            showNotification(`${optionText} Selected - Working!`);
-            
-            // Console output
-            console.log(`${optionText} - working`);
-            
-            selectedIndex = index;
-        }
+-- معالج رسائل من HTML
+function HandleDUIMessage(data)
+    print("📥 Received DUI message: " .. (data.type or "unknown"))
+    
+    if data.type == "aura_authenticated" then
+        AuraDUI.authenticated = true
+        print("✅ Authentication successful for key: " .. (data.key or "unknown"))
+        TriggerEvent('chatMessage', 'Aura', {0, 255, 0}, 'Authentication successful!')
+        
+    elseif data.type == "aura_category_selected" then
+        AuraDUI.currentCategory = data.category
+        print("📂 Category selected: " .. data.category)
+        HandleCategorySelection(data.category)
+        
+    elseif data.type == "aura_option_selected" then
+        print("⚡ Option selected: " .. (data.option or "unknown"))
+        print("working")
+        TriggerEvent('chatMessage', 'Aura', {255, 255, 0}, (data.option or "Option") .. " - working!")
+        
+    elseif data.type == "aura_error" then
+        print("❌ HTML Error: " .. (data.message or "unknown error"))
+        
+    elseif data.type == "aura_ready" then
+        print("✅ HTML interface ready")
+        TriggerEvent('chatMessage', 'Aura', {0, 255, 255}, 'Menu interface loaded!')
+    end
+end
 
-        function showNotification(message) {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.classList.add('show');
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-        }
+-- معالج اختيار الفئات
+function HandleCategorySelection(category)
+    if not AuraDUI.authenticated then
+        print("❌ User not authenticated")
+        TriggerEvent('chatMessage', 'Aura', {255, 0, 0}, 'Authentication required!')
+        return
+    end
+    
+    TriggerEvent('chatMessage', 'Aura', {100, 200, 255}, 'Category: ' .. category)
+    
+    -- تنفيذ الوظائف حسب الفئة المختارة
+    if category == "self" then
+        print("👤 Opening player options...")
+        
+    elseif category == "online" then
+        print("🌐 Opening online players menu...")
+        
+    elseif category == "weapons" then
+        print("🔫 Opening weapons menu...")
+        
+    elseif category == "visual" then
+        print("👁️ Opening visual effects...")
+        
+    elseif category == "vehicle" then
+        print("🚗 Opening vehicle options...")
+        
+    elseif category == "world" then
+        print("🌍 Opening world options...")
+        
+    elseif category == "misc" then
+        print("📦 Opening miscellaneous...")
+        
+    elseif category == "settings" then
+        print("⚙️ Opening settings...")
+    end
+end
 
-        // Keyboard controls
-        document.addEventListener('keydown', function(event) {
-            switch(event.key) {
-                case 'F1':
-                    event.preventDefault();
-                    toggleDropdown();
-                    break;
-                case '1':
-                    selectOption(1, 'Option 1');
-                    break;
-                case '2':
-                    selectOption(2, 'Option 2');
-                    break;
-                case 'Escape':
-                    if (isOpen) {
-                        toggleDropdown();
-                    }
-                    break;
-            }
-        });
+-- ===== أوامر التحكم =====
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const container = document.querySelector('.dropdown-container');
-            if (!container.contains(event.target)) {
-                if (isOpen) {
-                    toggleDropdown();
-                }
-            }
-        });
+-- تبديل المنيو
+function ToggleAuraMenu()
+    if AuraDUI.isVisible then
+        AuraDUI.isVisible = false
+        print("Menu hidden")
+        TriggerEvent('chatMessage', 'Aura', {255, 165, 0}, 'Menu hidden')
+    else
+        if not AuraDUI.dui then
+            CreateAuraDUI()
+        end
+        AuraDUI.isVisible = true
+        print("Menu shown")
+        TriggerEvent('chatMessage', 'Aura', {0, 255, 0}, 'Menu shown')
+    end
+end
 
-        // Initialize
-        showNotification('Dropdown Menu Ready!');
-    </script>
-</body>
-</html>
+-- إعادة تحميل المنيو
+function ReloadAuraMenu()
+    print("🔄 Reloading Aura Menu...")
+    DestroyAuraDUI()
+    Wait(500)
+    CreateAuraDUI()
+    TriggerEvent('chatMessage', 'Aura', {255, 255, 0}, 'Menu reloaded!')
+end
+
+-- ===== Thread الرسم =====
+
+CreateThread(function()
+    -- إنشاء DUI عند البدء
+    Wait(2000) -- انتظار تحميل النظام
+    CreateAuraDUI()
+    
+    while true do
+        Wait(0)
+        
+        -- رسم DUI على الشاشة
+        if AuraDUI.isVisible and AuraDUI.txd and AuraDUI.texture then
+            DrawSprite("aura_menu_txd", "aura_menu_tex", 
+                      MENU_CONFIG.posX, MENU_CONFIG.posY, 
+                      MENU_CONFIG.scaleX, MENU_CONFIG.scaleY, 
+                      0.0, 255, 255, 255, 255)
+        end
+    end
+end)
+
+-- ===== Thread التحكم =====
+
+CreateThread(function()
+    while true do
+        Wait(0)
+        
+        -- تبديل المنيو بـ F1
+        if IsControlJustPressed(0, 288) then -- F1
+            ToggleAuraMenu()
+        end
+        
+        -- إعادة تحميل بـ F2
+        if IsControlJustPressed(0, 289) then -- F2
+            ReloadAuraMenu()
+        end
+        
+        -- إخفاء بـ ESC
+        if IsControlJustPressed(0, 322) and AuraDUI.isVisible then -- ESC
+            AuraDUI.isVisible = false
+            TriggerEvent('chatMessage', 'Aura', {255, 165, 0}, 'Menu hidden')
+        end
+    end
+end)
+
+-- ===== معالج الأحداث =====
+
+-- استقبال رسائل من HTML
+RegisterNUICallback('messageHandler', function(data, cb)
+    HandleDUIMessage(data)
+    cb('ok')
+end)
+
+-- أوامر الشات
+RegisterCommand('aura', function()
+    ToggleAuraMenu()
+end, false)
+
+RegisterCommand('aurareload', function()
+    ReloadAuraMenu()
+end, false)
+
+RegisterCommand('auraurl', function(source, args)
+    if args[1] then
+        MENU_CONFIG.url = args[1]
+        print("URL updated to: " .. args[1])
+        ReloadAuraMenu()
+    else
+        print("Current URL: " .. MENU_CONFIG.url)
+        TriggerEvent('chatMessage', 'Aura', {255, 255, 0}, 'URL: ' .. MENU_CONFIG.url)
+    end
+end, false)
+
+-- تنظيف عند إنهاء الـ resource
+AddEventHandler('onResourceStop', function(resourceName)
+    if (GetCurrentResourceName() ~= resourceName) then
+        return
+    end
+    
+    DestroyAuraDUI()
+end)
+
+-- رسائل البدء
+print("==============================")
+print("FIXED AURA HTML DUI MENU")
+print("URL: " .. MENU_CONFIG.url)
+print("Controls:")
+print("F1: Toggle Menu")
+print("F2: Reload Menu") 
+print("ESC: Hide Menu")
+print("Commands: /aura /aurareload /auraurl")
+print("==============================")
+
+-- فحص حالة DUI
+CreateThread(function()
+    Wait(5000)
+    if AuraDUI.isVisible and AuraDUI.dui then
+        print("✅ Aura DUI is running successfully")
+        TriggerEvent('chatMessage', 'Aura', {0, 255, 0}, 'DUI System Ready!')
+    else
+        print("❌ Aura DUI failed to load - Try /aurareload")
+        TriggerEvent('chatMessage', 'Aura', {255, 0, 0}, 'DUI Load Failed - Try F2 or /aurareload')
+    end
+end)
